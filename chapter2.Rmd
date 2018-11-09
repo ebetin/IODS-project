@@ -1,7 +1,99 @@
-# Insert chapter 2 title here
+# Regression and model validation
 
-*Describe the work you have done this week and summarize your learning.*
+In this exercise, I have earlier created a data set based on the data collected from Johdatus yhteiskuntatilastotieteeseen (autumn 2014) course. [The original study](http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS3-meta.txt) examined study success, motivation and learning habits of social science students.
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using  
+## Explaining the data set
+
+Let us start by reading the data file and studying its properties:
+```{r}
+lrn14 <- read.table("data/learning2014.txt", sep="\t", header=TRUE)
+
+```
+
+We can study the dimension of the data by writing:
+```{r}
+dim(lrn14)
+```
+It seems that the data set contains 7 columns and 166 rows.
+
+And to study the structure:
+```{r}
+str(lrn14)
+```
+
+The first two columns introduce some basic information about the students, ie. genders and ages, respectively. The third one is an average of ten questions on Likert scale describing students' attitude toward statistics, and the following three columns measure subjects' deep, strategical and surface learning, respectively. Finally, the last one contains the exam points. 
+
+## Basic statistical properties
+
+To further study the data set, we can use summary() command to calculate some basic statistical properties, such as mean or median:
+```{r}
+summary(lrn14)
+```
+
+On the other hand, we can also make pair plots between to describe relations between given variables. Note that here the blue color represents males and the red one females.
+
+```{r include=FALSE}
+# Needed libraries
+library(GGally)
+library(ggplot2)
+```
+
+
+```{r, fig.width = 8, fig.height= 6}
+# pair plots
+ggpairs(lrn14, mapping = aes(alpha = 0.3, col = gender), upper = list(continuous = wrap("cor", size = 3)), lower = list(combo = wrap("facethist", bins = 20))) 
+```
+
+What is surprising is that most of the distributions are, from certain extent, bell-shaped, or at least, mainly unimodal. Furthermore, there exist quite strong positive correlation between exam score and student's attitude toward statistics which is not unexpected. However, there also exists a mild negative correlation between surface and deep learning which is, at first glance, weird.
+
+
+## Multiple regression
+
+Let us then study how the exam score depends on the other variables. Based on the previous figure the most promising candidates for explanatory variables are attitude (cov = 0.437) as well as strategical (0.146) and surface learning (-0.144). By using linear, multiple regression, we find out that:
+
+```{r}
+# linear regression model
+regression_model3 = lm(points ~ attitude + stra + surf, data = lrn14)
+
+# summary of our model
+summary(regression_model3)
+```
+
+Here, the lm function is using one-sided Student's t-test to test the null hypothesis that a fitting parameter is zero. The test assumes that the underlying distribution is normal, and it gives out a p-value represent the probability the null hypothesis is true within the given model. Together with a chosen significant level, one can state is there a significant variation from the null hypothesis or not.
+
+Therefore, based on the summary, the only explanatory variable which is statistically significant, ie. the p-value is smaller than the significant level $\alpha$, is the attitude, when $\alpha = 0.05$. Therefore, we may discard other two variables and do the analyze again:
+
+
+```{r}
+regression_model2 = lm(points ~ attitude, data = lrn14)
+summary(regression_model2)
+```
+
+The obtained fit seems to be a bit better, especially in case of the y-intercept. 
+
+Using the given summary, one is able to see that the slope coefficient is positive. This indicates that there is a positive correlation between person's exam score and their attitude towards statistics, ie. motivated students get better grades. On the other hand, this result also revels that the exam score depends on strategical and surface learning parameters only weakly.
+
+## Multiple R-square
+
+The multiple R-square tells us how well the fitted linear function describes the given data, and its value is always between zero and one. So in general case, higher the R-square better is the model.
+
+The multiple R-squared values of the presented models are quite small (0.21 and 0.19, respectively) but not close to zero. As stated above, small value typically indicates that the model does not explain the behavior of the target variable. However, the result is not unpredictable because the population consist of humans, and humans do not statistically behave as well as elementary particle, for example. Furthermore in our latter model, the statistical significants of model constants are huge, and hence, we can state that fit is faithful according to this diagnostic.
+
+## Diagnostic plots
+
+The assumptions of the linear regression model are follow:
+* Linear regression really exist
+* Errors are normally distributed with constant variance
+* Errors are not correlated
+* Errors do not depend on model variables.
+
+```{r, fig.width = 8, fig.height= 6}
+#Plotting residuals vs. fitted values (1), normal QQ-plot (2) and residuals vs leverage (5)
+plot(regression_model2, which = c(1,2,5))
+```
+
+In the residual vs. fitted data plot, everything seems to be mostly just fine, and	distinguishable separation from the ground level does not appear. Nonetheless, three data points stand out (#35, #56 and #145). Even so, this diagnostic plot indicates that the situation is truly linear.
+
+Correspondingly, the normal QQ-plot continues the story, but now there exists some deviation from the baseline at both ends. Nonetheless, the underlying distribution can be still seen reasonable normal. Finally, the residuals vs. Leverage plot can be used to study the last assumption, and because we do not see any extreme outliers, we can state that the assumption holds.
+
+Based on the diagnostic plots, one may state that the assumptions of the given model are valid.

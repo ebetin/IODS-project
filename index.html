@@ -153,6 +153,10 @@ $(document).ready(function () {
 <li><a href="#multiple-r-square">Multiple R-square</a></li>
 <li><a href="#diagnostic-plots">Diagnostic plots</a></li>
 </ul></li>
+<li><a href="#logistic-regression">Logistic regression</a><ul>
+<li><a href="#explaining-the-data-set-1">Explaining the data set</a></li>
+<li><a href="#alcohol-consumption">Alcohol consumption</a></li>
+</ul></li>
 </ul>
 </div>
 
@@ -276,6 +280,30 @@ plot(regression_model2, which = c(1,2,5))</code></pre>
 <p>In the residual vs. fitted data plot, everything seems to be mostly just fine, and distinguishable separation from the ground level does not appear. Nonetheless, three data points stand out (#35, #56 and #145). Even so, this diagnostic plot indicates that the situation is truly linear.</p>
 <p>Correspondingly, the normal QQ-plot continues the story, but now there exists some deviation from the baseline at both ends. Nonetheless, the underlying distribution can be still seen reasonable normal. Finally, the residuals vs. Leverage plot can be used to study the last assumption, and because we do not see any extreme outliers, we can state that the assumption holds.</p>
 <p>Based on the diagnostic plots, one may state that the assumptions of the given model are valid.</p>
+<hr />
+</div>
+</div>
+<div id="logistic-regression" class="section level1">
+<h1>Logistic regression</h1>
+<p>This week we are studying logistic regression.</p>
+<div id="explaining-the-data-set-1" class="section level2">
+<h2>Explaining the data set</h2>
+<p>Let us start by reading the data file ‘alc.txt’ and studying its properties:</p>
+<pre class="r"><code>alc &lt;- read.table(&quot;data/alc.txt&quot;, sep=&quot;\t&quot;, header=TRUE)</code></pre>
+<p>Let us then see which kind of variables the file contains</p>
+<pre class="r"><code>colnames(alc)</code></pre>
+<pre><code>##  [1] &quot;school&quot;     &quot;sex&quot;        &quot;age&quot;        &quot;address&quot;    &quot;famsize&quot;   
+##  [6] &quot;Pstatus&quot;    &quot;Medu&quot;       &quot;Fedu&quot;       &quot;Mjob&quot;       &quot;Fjob&quot;      
+## [11] &quot;reason&quot;     &quot;nursery&quot;    &quot;internet&quot;   &quot;guardian&quot;   &quot;traveltime&quot;
+## [16] &quot;studytime&quot;  &quot;failures&quot;   &quot;schoolsup&quot;  &quot;famsup&quot;     &quot;paid&quot;      
+## [21] &quot;activities&quot; &quot;higher&quot;     &quot;romantic&quot;   &quot;famrel&quot;     &quot;freetime&quot;  
+## [26] &quot;goout&quot;      &quot;Dalc&quot;       &quot;Walc&quot;       &quot;health&quot;     &quot;absences&quot;  
+## [31] &quot;G1&quot;         &quot;G2&quot;         &quot;G3&quot;         &quot;alc_use&quot;    &quot;high_use&quot;</code></pre>
+<p>XXXX SELITYSTa BLAH BLAH</p>
+</div>
+<div id="alcohol-consumption" class="section level2">
+<h2>Alcohol consumption</h2>
+<p>XXXX</p>
 <hr />
 </div>
 </div>

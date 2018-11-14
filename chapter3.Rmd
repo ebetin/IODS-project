@@ -1,0 +1,4 @@
+# Logistic regression
+
+This week we are studying logistic regression.
+

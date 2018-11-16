@@ -2,3 +2,188 @@
 
 This week we are studying logistic regression.
 
+## Explaining the data set
+
+During this exercise, we are studying a data set which contains information about students' grades and factors affecting on them. If you want to have some more information about the set, see the [original study](https://archive.ics.uci.edu/ml/datasets/Student+Performance).
+
+Let us start by reading the data file 'alc.txt' and studying its properties:
+```{r}
+alc <- read.table("data/alc.txt", sep="\t", header=TRUE)
+
+```
+
+Let us then see which kind of variables the file contains
+```{r}
+colnames(alc)
+```
+
+You may see 35 different variables, such as 'age' or 'sex'. But in this exercise we are interested in to study alcohol consumption, and therefore, 'alc_use' and 'high_use' are the relevant variables. Here, 'alc_use' is the average of weekday (Dalc) and weekend (Walc) comsumption on Likert scale. Besides, the 'high_use' variable tells use when the alcohol consumption is high, ie. 'alc_use' > 2.
+
+Note that the used data set is an intersection of two data set provided by the original study. Hence, all numerical variables are average values.
+
+## Alcohol consumption
+
+I have four hypothesis related to high alcohol consumption:   
+1. People whose final scores ('G3') are low, are liker to use a lot of alcohol.   
+2. The alcohol consumption of young ('age') people is high.   
+3. Good relationships ('famrel') with your family members prevent drinking.   
+4. People who use lots of alcohol fail courses ('failures') more often.   
+
+To study these hypothesis, I will first 
+
+### Hypothesis 1
+
+In this section, we will study the first hypothesis "people whose final scores ('G3') are low, are likier to use a lot of alcohol." Lets us first make a box plot
+
+```{r}
+g1 <- ggplot(alc, aes(x = high_use, y = G3))
+g1 + geom_boxplot() + ylab("Final grade") + xlab("High usage of alcohol")
+```
+
+and a bar one:
+
+```{r}
+counts <- table(alc$high_use, alc$G3)
+barplot(counts, col=c("darkblue","red"), beside=T, legend = rownames(counts), xlab = "Final grade")
+```
+
+Based on these plots, it seems that the mean final score is indeed higher within students who do not use a lot of alcohol. Nevertheless in that case, the variance is also notable higher which is a bit suprising. But based on these findings we can state that most probably there is not any tendency towards the hypothesis.
+
+### Hypothesis 2
+
+Let us then study the hypothesis number 2: "The alcohol consumption of young ('age') people is high" by making a box and a bar plots: 
+
+```{r}
+g1 <- ggplot(alc, aes(x = high_use, y = age))
+g1 + geom_boxplot() + ylab("Age") + xlab("High usage of alcohol")
+```
+
+```{r}
+counts <- table(alc$high_use, alc$age)
+barplot(counts, col=c("darkblue","red"), beside=T, legend = rownames(counts), xlab = "Age")
+```
+
+What is notable is that the students are quite young, the youngest students are only 15 years old. (NB The legal drinking age is 16 in Portugal.) There for it is not surprising that the younger people are not heavy drinkers, ie. the mean age of the heavy drinkers is two years higher. Therefore, it is clear that our hypothesis is incorrect, and it is very likable that our hypothesis would have been more successful if the youngest students of the school were a bit older than 15.
+
+### Hypothesis 3
+
+The third hypothesis states "Good relationships ('famrel') with your family members prevent drinking."
+
+```{r}
+g1 <- ggplot(alc, aes(x = high_use, y = famrel))
+g1 + geom_boxplot() + ylab("Relationship between a student and their family") + xlab("High usage of alcohol")
+```
+
+```{r}
+counts <- table(alc$high_use, alc$famrel)
+barplot(counts, col=c("darkblue","red"), beside=T, legend = rownames(counts), xlab = "Relationship between a student and their family")
+```
+
+Based on the plots it seems like the statement is some what true. Even to the average (4) relationship in Likert scale is the same on both cases, the distribution is, in the case of low alcohol consumption, tilted toward the highest value. Conversely in the other case, the distribution is around the average value.
+
+### Hypothesis 4
+
+The last hypothesis is given as: "People who use lots of alcohol fail coerces ('failures') more often."
+
+```{r}
+xtabs(~ failures + high_use, data = alc)
+```
+
+Based on the cross-tabulation given above, it is easy to see that there is not any notable correlation between the usage of alcohol and the number of failures of the course.
+
+
+## Logistic regression
+
+Let us fit a logistic regression model which uses our chosen variables from the previous section to explain the high/low usage of alcohol, and then let us see the model summary
+
+```{r}
+logistic_model <- glm(high_use ~ G3 + age + famrel + failures, data = alc, family = "binomial")
+summary(logistic_model)
+```
+
+Based on the summary, we can see that the family relationship ('famrel') is the only variable which p-value is under the 0.05 significant level. Hence, we can state the the findings of the previous are line with this analyze, or in other words, the only statistically obvious relationship is between high/low alcohol usage and the family relationship.
+
+```{r include=FALSE}
+# I need this library to have those nice pipes :=)
+library(magrittr)
+```
+
+Let us present the model coeffiecients and calculate their confidence intervals:
+
+```{r}
+odd_ratio <- coef(logistic_model) %>% exp
+conf_intervals <- confint(logistic_model) %>% exp
+cbind(odd_ratio, conf_intervals)
+```
+
+The odd ration of the variables 'G3' and 'famrel' seem to be (about) below one and the other two (about) above on. However, the variable 'famrel' is the only one which clearly below one, ie. it support that there is a negative association with the high/low drinking factor. This finding also support our hypothesis number 3. 
+
+On the other hand, the variable 'failures' is the only (quite) quantity clearly above one. This result indicates that the number of failed classes is higher is the person is drinking a lot. The p-value of the variables is quite close to the significant level but just above it (0.066). This piece of information also points to the direction that the there is a connection but not a very visible one. 
+
+## Prediction power
+
+Based on the analyses given in the previous section, the only variable which gives statistically significant relationship with the high/low consumption of alcohol is 'famrel'. Nonetheless, we are also including the almost statistically significant parameter 'failures' (because this would be boring without).
+
+So let us first define the new logistic regression model 
+
+```{r}
+logistic_model_updated <- glm(high_use ~ famrel + failures, data = alc, family = "binomial")
+summary(logistic_model_updated)
+```
+
+Now, it seems that the variable 'failures' fits well which was not the case in previous section.
+
+Then let us then make a 2x2 cross tabulation of predictions versus the actual values:
+
+```{r include=FALSE}
+# function 'mutate' needs this
+library(dplyr)
+```
+
+
+```{r}
+# predict() the probability of high_use
+probabilities <- predict(logistic_model_updated, type = "response")
+
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+
+# use the probabilities to make a prediction of high_use
+alc <- mutate(alc, prediction = probability > 0.5)
+
+# tabulate the target variable versus the predictions
+table(high_use = alc$high_use, prediction = alc$prediction)
+```
+
+As you can see the model works pretty well, ie. in 264 cases the model gives the right results. Nonetheless, there is 14 cases when false positive and 104 cases when false negative results occurs. All in all, we cannot say that this model is perfect.
+
+Besides, we may also make a plot to visualize this results:
+
+```{r echo=TRUE}
+# Some plotting libraries
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+# initialize a plot of 'high_use' versus 'probability' in 'alc'
+g <- ggplot(alc, aes(x = probability, y = high_use, col = prediction))
+
+# define the geom as points and draw the plot
+g + geom_point()
+```
+
+Finally, let us calculate the training error:
+
+```{r}
+# define a loss function (mean prediction error)
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+# call loss_func to compute the average number of wrong predictions in the (training) data
+loss_func(class = alc$high_use, prob = alc$probability)
+```
+
+This results indicates that error is about 0.31. The error is somewhat large but it is reasonable because the p-value of variable 'famrel' is close to the significant level, 0.05. Furthermore, we have to also remember that the data set is describing some subset of human population and therefore, the error is excepted to be a bit higher.

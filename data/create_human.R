@@ -21,7 +21,7 @@ str(gii)
 # whereas the 'gii' file has 195 and 10, respectively.
 # It seems that all varibales are in numerical form except the vaaribale 'Country'
 # and 'Gross.National.Income..GNI..per.Capita'. However, it seems that the latter one
-# can be converted into numerical form as well.
+# can be converted into numerical form as well if needed.
 
 # Let us make a summary of these variables
 summary(hd)

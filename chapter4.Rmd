@@ -1,3 +1,72 @@
 # Clustering and classification
 
 Hopefully, I am going to learn something about clustering and classification theory.
+
+## Data set
+
+In this exercise, we will study the so called Boston data set. This set contains information about "housing values in suburbs of Boston" (see [the meta file](https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html)).
+
+Let us first read the Boston data from the MASS package:
+
+```{r include=FALSE}
+# Needen library (Boston data set)
+library(MASS)
+```
+
+
+```{r}
+# let us load the object 'Boston'
+data(Boston)
+```
+
+Then we might study it dimensions:
+```{r}
+dim(Boston)
+```
+
+and its structure:
+
+```{r}
+str(Boston)
+```
+
+It seems that the data set contains 506 observations (rows) and 14 variables (columns). The definition of variables can be found from the meta file.
+
+## Overview
+
+Let us then study the summary of the given data set:
+```{r}
+summary(Boston)
+```
+
+and make a graphical interpretation of the distribution:
+
+```{r include=FALSE}
+# needed library
+library(ggplot2) # (ggpairs)
+```
+
+
+```{r, fig.width = 8, fig.height= 6}
+ggpairs(Boston)
+```
+
+and present the correlation plot as well:
+
+```{r include=FALSE}
+# I need this as well
+library(corrplot)
+```
+
+
+```{r}
+# correlation matrix with rounding
+cor_matrix<-cor(Boston) %>% round(digits = 2) 
+
+# correlation plot, upper triangle
+corrplot(cor_matrix, method="circle", type="upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+```
+
+If we study the distibutions, we may see that many of them are bimodular ad the modes are far apart, such as 'indus', 'tax' and 'rad'. On the other hand, one can also find distibution which are heavily skewed, e.g. 'black', 'crim' and 'zn'. Correlation wise, the situaton is interesting because various strong correlation can be detected, and interestingly, only a few situation suggest a small (absolute value of) correlation. (NB One should note that the variable 'chas' is a dummy variable and should be ignored.)
+
+## Scaling

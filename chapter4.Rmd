@@ -9,7 +9,7 @@ In this exercise, we will study the so called Boston data set. This set contains
 Let us first read the Boston data from the MASS package:
 
 ```{r include=FALSE}
-# Needen library (Boston data set)
+# Needed library (Boston data set)
 library(MASS)
 ```
 
@@ -67,6 +67,156 @@ cor_matrix<-cor(Boston) %>% round(digits = 2)
 corrplot(cor_matrix, method="circle", type="upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
 ```
 
-If we study the distibutions, we may see that many of them are bimodular ad the modes are far apart, such as 'indus', 'tax' and 'rad'. On the other hand, one can also find distibution which are heavily skewed, e.g. 'black', 'crim' and 'zn'. Correlation wise, the situaton is interesting because various strong correlation can be detected, and interestingly, only a few situation suggest a small (absolute value of) correlation. (NB One should note that the variable 'chas' is a dummy variable and should be ignored.)
+If we study the distributions, we may see that many of them are bimodular ad the modes are far apart, such as 'indus', 'tax' and 'rad'. On the other hand, one can also find distribution which are heavily skewed, e.g. 'black', 'crim' and 'zn'. Correlation wise, the situation is interesting because various strong correlation can be detected, and interestingly, only a few situation suggest a small (absolute value of) correlation. (NB One should note that the variable 'chas' is a dummy variable and should be ignored.)
 
 ## Scaling
+
+Let us then scale the Boston data using function 'scale':
+```{r}
+# scaling
+boston_scaled <- scale(Boston)
+
+# summary
+summary(boston_scaled)
+
+```
+
+As one can easily see, the mean value of every distribution is now zero, ie. the distributions are centered. Also as the name of the function 'scale' indicates, the achieved centered distributions are scaled dividing by the standard deviations. This helps us to compare the shapes of these distributions.
+
+Let us then replace the original crime rate with a categorical one:
+
+```{r}
+# because the class of the end results of function 'scaled' is a matrix
+# we need to change its class to data frame
+boston_scaled <- as.data.frame(boston_scaled)
+
+# let us find the quantiles of the crime rate
+bins <- quantile(boston_scaled$crim)
+
+# creating categorical variable of the crime rate with labeling using quantiles
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE, label = c("low","med_low","med_high","high"))
+
+# removing original crime rate
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+
+# and adding the new one
+boston_scaled <- data.frame(boston_scaled, crime)
+```
+
+Next, we divide the given data into a train and a test set. Here, we are demanding that 80 % of the data points are part of the train set.
+
+```{r}
+# Number of observations
+number_rows <- nrow(boston_scaled)
+
+# picking up 80 % of the data points
+row_index <- sample(number_rows,  size = 0.8 * number_rows)
+
+# train set
+train <- boston_scaled[row_index,]
+
+# test set
+test <- boston_scaled[-row_index,]
+```
+
+## Linear discriminant analysis
+
+Let us then create a fit on the train data using linear discriminant analysis (LDA). Because the data is scaled beforehand, we may assume that it fulfills normality and and the population variance is the same for each variable. Here, the crime rate ('crime') will be the target variable and all the other variables are treating as prediction variables.
+
+```{r}
+# lda
+lda_fit <- lda(crime ~ ., data = train)
+```
+
+Let then see the results in LDA biplot:
+
+```{r}
+# transforming crimes classes into numerical ones
+crime_classes <- as.numeric(train$crime)
+
+# lda biplot
+plot(lda_fit, dimen = 2, col = crime_classes, pch = crime_classes)
+```
+
+## Predicting
+
+Let us the save the crime rate variable 'crime' from the 'tets' data set into a separate variables 'test_crime' and then remove the variable from the set:
+
+```{r}
+# saving the crime variable from the test data set
+test_crime <- test$crime
+
+# removing the variable
+test <- dplyr::select(test, -crime)
+```
+
+Then, we may test your fit gotten from the previous section with the 'test' data:
+
+```{r}
+# prediction
+lda_prediction <- predict(lda_fit, newdata = test)
+```
+
+Let us make a cross table to study the results:
+
+```{r}
+table(correct = test_crime, predicted = lda_prediction$class)
+```
+
+We can see that the highest crime rate value was predicted perfectly as well as the the lowest one agreed with the data excellently. However, if we are studying the last two categories, we may notice that the output of our model is not that good, especially in case of 'med_low' variable. Nonetheless, this results is not a big surprise because the LDA biplot indicates that there is notable overlapping between 'low', 'med_low' and 'med_high' variables.
+
+## Further studies
+
+Let us first reload and rescale the Boston data set:
+
+```{r}
+# reloading Boston data set
+data(Boston)
+
+# standardizing it
+scaled_boston_new <- scale(Boston) %>% as.data.frame()
+```
+
+Then, we can calculate the (Euclidean) distance between observations with a summary of the results:
+
+```{r}
+dist_euclidean <- dist(scaled_boston_new)
+summary(dist_euclidean)
+```
+
+Next, we want to divide the data into cluster by using k-means algorithm. Let us try it using 4 clusters
+
+```{r, fig.width = 8, fig.height= 6}
+# k-means 
+k_means1 <-kmeans(Boston, centers = 4)
+
+# pair plot
+pairs(Boston, col = k_means1$cluster)
+```
+
+Now, we have to figure out how many cluster we really need:
+
+```{r}
+# maximum number of clusters
+cluster_max <- 10
+
+# total within sum of squares
+twcss <- sapply(1:cluster_max, function(k){kmeans(Boston, k)$tot.withinss})
+
+# let us see the result
+qplot(x = 1:cluster_max, y = twcss, geom = 'line')
+```
+
+Based on the figure, we can see that there is a dramatical change between one and two. Therefore, we state that the optimal number of cluster is two. 
+
+Finally, let us plot the end results, ie. the cluster as a pair plot:
+
+```{r, fig.width = 8, fig.height= 6}
+# k-means 
+k_means2 <-kmeans(Boston, centers = 2)
+
+# pair plot
+pairs(Boston, col = k_means2$cluster)
+```
+
+Here, the different cluster are separated using colors.

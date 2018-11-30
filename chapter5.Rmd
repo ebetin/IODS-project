@@ -1,0 +1,3 @@
+# Dimensionality reduction techniques
+
+This weeks topic is dimensionality reduction techniques. So, let us get rid of those dimensions.

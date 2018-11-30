@@ -1,3 +1,98 @@
 # Dimensionality reduction techniques
 
-This weeks topic is dimensionality reduction techniques. So, let us get rid of those dimensions.
+This week's topic is dimensionality reduction techniques. So, let us get rid of those dimensions.
+
+## Introduction
+
+In this exercise, we will use study a data set which is originally created by the United Nations Development Programme (see [http://hdr.undp.org/en/content/human-development-index-hdi](here)). However, we have earlier reformed the set to corresponds our needs (see file create_human.R for details). 
+
+To be able to study the data set, we need to load it:
+```{r}
+human <- read.table("data/human_updated.txt", sep = "\t", header = T)
+```
+
+Then, we can examine its summary:
+```{r}
+summary(human)
+```
+
+and make a graphical overview:
+```{r include=FALSE}
+library(GGally) # ggpairs
+```
+
+```{r}
+ggpairs(human)
+```
+
+All distributions seems to be monomodular, to some extent. Nevertheless, the distributions are not bell-shaped but typically skewed, especially in case of 'gni' and 'maternal_mortality' when the skewness is notable. Furthermore, there exist large correlations (both negative and positive ones) between given distributions. For example, the birth rate ('birth_rate') seems to be heavily correlated with almost all other variables except with 'parliament_perc' and 'labour_ratio'. Other strong correlations can also be wound, such as between life expectancy ('life_exp') and maternal mortality ('maternal_mortality').
+
+## Principal component analysis
+
+### Non-standardized data
+
+Let us then do the principal component analysis (PCA) on the non-standardized data set:
+```{r}
+pca_human <- prcomp(human)
+```
+
+Then, we can
+```{r}
+pca_summary1 <- summary(pca_human)
+pca_summary1
+```
+
+```{r fig.cap="The PCA biplot when the non-standardized data set is used. Clearly, the first principal components (PC1) follows the gross national income per capita (gni) variable.", warning=FALSE, fig.width = 8, fig.height= 6}
+# rounded variances
+pca_pr1 <- round(100*pca_summary1$importance[2, ], digits = 1)
+
+# axis labels
+pc_lab1 <- paste0(names(pca_pr1), " (", pca_pr1, "%)")
+
+# biplot of the first to principal components
+# NB the arrows represents the original variables
+biplot(pca_human, choices = 1:2, cex = c(0.8, 1), col = c("grey40", "deeppink2"), xlab = pc_lab1[1], ylab = pc_lab1[2])
+```
+
+Based on the above table, one can easily see that the first principal components (PC1) is dominant and explains about 99.99 % of the data. By looking the biplot, one can on other hand see that the PC1 is related to the 'gni' parameter. This is natural because the numerical value variable 'gni' is much larger than the values of other variables. Therefore, we can state that one needs to standardize the data before performing the PCA.
+
+### Standardized data
+
+Now, we can standardize the data and then do the same analyses:
+```{r}
+# scaling
+human_standar <- scale(human)
+
+# pca
+pca_human2 <- prcomp(human_standar)
+```
+
+```{r}
+# summary
+pca_summary2 <- summary(pca_human2)
+pca_summary2
+```
+
+```{r fig.cap="The PCA biplot when the standardized data set is used. Now, the first principal components (PC1) does not follow the gross national income per capita (gni) variable but it is a combination of multiple pramaeters.", warning=FALSE, fig.width = 8, fig.height= 6}
+# rounded variances
+pca_pr2 <- round(100*pca_summary2$importance[2, ], digits = 1)
+
+# axis labels
+pc_lab2 <- paste0(names(pca_pr2), " (", pca_pr2, "%)")
+
+# biplot of the first to principal components
+# NB the arrows represents the original variables
+biplot(pca_human2, choices = 1:2, cex = c(0.5, 0.7), col = c("grey40", "deeppink2"), xlab = pc_lab2[1], ylab = pc_lab2[2])
+```
+
+As one can see from the above table and biplot, the PCA of the standardized data set is a much realistic one. For instance, the PC1 is not explained by just one singe parameter but it is set by 6 different variables. This is due to the scaling which does not overhighlights the GNI parameters.
+
+### Personal interpretations
+
+Based on the PCA plot from standardized data, the PC1 seems to contains variables related to the wealth of the country. On the one hand, there are the maternal mortality and the birth rate which indicates that the country is economically under	developed. One the other hand, the other variables, ie. school success, life expectancy and gross national income per capita, gives an opposing indication. 
+
+The two major explaining parameters of the second principal components (PC2) are the number of the females in parliament and labour power (per cent). Therefore, this principal component seems to be related to the gender equality.
+
+## Tea data set
+
+I could not study the asked data set because there is a some kind of conflict when I try to install the asked package (mostly with 'libcurl4-openssl-dev' package). Very strange... Well, I do not have time to solve this issue...

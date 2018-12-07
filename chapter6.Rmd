@@ -1,3 +1,307 @@
 # Analysis of longitudinal data
 
-This will be the final week! 
+This is the final week! :-)
+
+## RATS data
+
+In this part we will use a [given rat data](https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/rats.txt) which is modified during the data wrangling exercise: 
+
+```{r}
+# Loading
+rats_long <- read.table("data/rats_long.txt", sep = "\t", header = T)
+
+# Converting categorical variables into factors
+rats_long$ID <- factor(rats_long$ID)
+rats_long$Group <- factor(rats_long$Group)
+```
+
+We may study its structure:
+
+```{r}
+# structure
+str(rats_long)
+```
+
+This tells to us that the modified data set contains 176 observations (rows) and 4 variables (columns). Here, we are studying three different groups ('Group') containing  176 rats ('ID') and the weight ('weight', grams) value is gotten from certain weeks ('time'). 
+
+### Basic visualization
+
+Then, we may visualize the treatments response:
+
+```{r include=FALSE}
+library(ggplot2) # ggplot
+library(dplyr) # mutate, group_by
+library(tidyr) # gather
+```
+
+```{r fig.cap="The weight as a function of time. The results have gotten from three different groups."}
+ggplot(rats_long, aes(x = time, y = weight, linetype = ID)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(rats_long$weight), max(rats_long$weight)))
+```
+
+As one can easily see, the starting weight of rats varies a lot. Therefore, to be able to study the effect of each group, we have to standardize the data set by subtracting the mean and dividing the end result by the standard deviation:
+
+```{r fig.cap="The standardized weight value as a function of time. The results have gotten from three different groups."}
+# adding a new variables 'std_bprs' which is scaled version of 'bprs'
+rats_long <- rats_long %>%
+  group_by(time) %>%
+  mutate(std_rats = scale(weight)) %>%
+  ungroup()
+
+# plotting the result
+ggplot(rats_long, aes(x = time, y = std_rats, linetype = ID)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(name = "standardized weight")
+```
+
+Still, the situation is quite messy as in case of group one. However, based on the above figures, we may notice that the weights of group one are significantly smaller compared to the other two groups. On the other, the situation between groups two and three is quite vague, especially due to the outlier in group two. Nevertheless, it seems that every group contains at least one outlier.
+
+### Group means
+
+Furthermore, we may study and compare these groups by using their statistical properties such as means as well:
+
+```{r, fig.cap="The weight profiles of the three rat groups."}
+# number of weeks
+n_rats <- rats_long$time %>% unique() %>% length()
+
+# summary which use 'Group', 'Time' as well as mean and standard error of the weight 
+rats_summary <- rats_long %>%
+  group_by(Group, time) %>%
+  summarise( mean = mean(weight), se = sd(weight)/sqrt(n_rats) ) %>%
+  ungroup()
+
+# plotting
+ggplot(rats_summary, aes(x = time, y = mean, linetype = Group, shape = Group)) +
+  geom_line() +
+  scale_linetype_manual(values = c(1,2,3)) +
+  geom_point(size=3) +
+  scale_shape_manual(values = c(1,2,3)) +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se, linetype="1"), width=0.3) +
+  theme(legend.position = c(0.9,0.5)) +
+  scale_y_continuous(name = "mean(weight) +/- se(weight)")
+```
+
+This analysis suggests that the rats on the group one are a lot lighter than the subjects on the other groups as seen above as well. Besides, there seems to bee a more clearer distinction between the other two groups so that the mean weight of group three is a bit, but clearly, larger. Therefore, the above stated outlier on group two is a most likely a real outlier. But we need to study it further:
+
+```{r fig.cap="Box plots of the weight population of the three rat groups."}
+# summary for box plot
+rats_summary2 <- rats_long %>%
+  filter(time > 1) %>%
+  group_by(Group, ID) %>%
+  summarise( mean=mean(weight) ) %>%
+  ungroup()
+
+# box plot
+ggplot(rats_summary2, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(weight), weeks 8-64")
+```
+
+As stated above, every group contains one outlier based on the box plot. However, the effect of the outlier in group two seems to be noticeable, ie. the box plot is heavily spread. Therefore, let us remove the outlier due to its bias to be able to compare the means even better: 
+
+```{r fig.cap="Box plots of the weight population of the three rat groups without an outlier."}
+# added new condition
+rats_summary3 <- rats_summary2 %>% filter(mean < 550)
+
+# new plot
+ggplot(rats_summary3, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(weight), weeks 8-64")
+```
+
+Now, the above figure clearly states that the mean of the weight of the group three is indeed the greatest whereas the rats on group one are the lightest. 
+
+### t-test
+
+Nevertheless, we have so far only studied the difference of the three given groups by naked eye. Here, we may use the two-sided Students' t-test to compare our groups:
+
+```{r}
+# group variables
+rats_group1 <- filter(rats_summary3, Group == 1)
+rats_group2 <- filter(rats_summary3, Group == 2)
+rats_group3 <- filter(rats_summary3, Group == 3)
+
+
+# Students' t-test, between groups 1 and 2
+t.test(rats_group1$mean, rats_group2$mean, var.equal = T)
+
+# Students' t-test, between groups 2 and 3
+t.test(rats_group2$mean, rats_group3$mean, var.equal = T)
+
+# Students' t-test, between groups 1 and 3
+t.test(rats_group1$mean, rats_group3$mean, var.equal = T)
+```
+
+Based on the p-values of the tests ($10^{-9}$, $2 \times 10^{-3}$ and $8\times10^{-11}$), it is easy to state that all of group means are different at significant level of 0.05. Also, the 95 % confidence intervals do not contain value zero which support this claim.
+
+### ANOVA test
+
+Finally, we may study who did the diet affect by using the ANOVA test:
+
+```{r}
+# original data
+rats <- read.table("https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/rats.txt", sep  ="\t", header = T)
+
+# summary with a baseline (week 1)
+rats_summary4 <- rats_summary2 %>% mutate(baseline = rats$WD1)
+
+# linear model fit
+lm_fit <- lm(mean ~ baseline + Group, data = rats_summary4)
+
+# variance table of the model
+anova(lm_fit)
+```
+
+Here, we used the weight measurements from week 1 as a baseline to be compared. The test data indicates that the weight of rats is heavily related to the baseline values (p-value $10^{-14}<0.05$). On the other hand, the data does not support that the diet has an effect on the rats' weight (p-value $0.08>0.05$).
+
+
+## BPRS data
+
+In this part we will use a [given brief psychiatric rating scale data set](https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/BPRS.txt) which is modified during the data wrangling exercise: 
+
+```{r}
+# Loading
+bprs_long <- read.table("data/bprs_long.txt", sep = "\t", header = T)
+
+# Coverting categorical variables into factors
+bprs_long$treatment <- factor(bprs_long$treatment)
+bprs_long$subject <- factor(bprs_long$subject)
+```
+
+We may study its structure:
+
+```{r}
+# structure
+str(bprs_long)
+```
+
+This tells to us that the modified data set contains 360 observations (rows) and 4 variables (columns). Here, we are studying two different treatment groups ('treatment') gotten by studying 40 patients ('subject'; 20 per treatment) and the BPRS ('bprs') value is gotten from certain weeks ('week', 0 to 8). 
+
+### Basic visualization
+
+Let us first visualize the data:
+
+```{r fig.cap="The BPRS as a function of time. The results have gotten from two different treatment groups."}
+ggplot(bprs_long, aes(x = week, y = bprs, linetype = subject)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(bprs_long$bprs), max(bprs_long$bprs)))
+```
+
+The plot seems to be quite messy, but we might see a some kind of decrease over time there. But hopefully, we will get something out of this by utilizing statistical methods. :.)
+
+### Linear regression
+
+Now, we may study the data set using simple linear regression model where the target variable is BPRS value and the explanatory variables are 'week' and 'treatment':
+
+```{r}
+# linear regression model
+bprs_lm <- lm(bprs ~ week + treatment, data = bprs_long)
+
+# model summart
+summary(bprs_lm)
+```
+
+The results suggests that the 'treatment' is not useful parameter because its p-value is very large ($0.66>0.05$). On the other hand, the p-value of parameter 'week' is	remarkable small ($<2 \times 10^{-16}$) which supports its importance. Now, we may get rid of the unsuitable parameter 'treatment' and make a new linear model without it:
+
+```{r}
+# linear regression model
+bprs_lm2 <- lm(bprs ~ week, data = bprs_long)
+
+# model summart
+summary(bprs_lm2)
+```
+
+If we examine the gotten model more close, we may notice that the R-squared values are quite small (0.18). This is alarming but it is not	catastrophic because we are studying a subset of human population and the p-values of the fitted model are 	negligible.
+
+### Linear mixed-effects models
+
+```{r include=FALSE}
+library(lme4)
+```
+
+Let us then try something a bit different by using linear mixed-effects model. This time, the explanatory variables are again 'week' and 'treatment' but now we added a random effect term as well. It is natural to use the 'subject' variable as a random effect because humans are very vaguely behaving creatures:
+
+```{r}
+# random intercept model
+bprs_lmer <- lmer(bprs ~ week + treatment + (1 | subject), data = bprs_long, REML = F)
+
+# model summary
+summary(bprs_lmer)
+```
+
+Unfortunately, it seems that the estimated standard derivation of the model parameters are about the same, both the best estimate and the uncertainty limits, compared to the simple linear model. 
+
+Let us then make a bit more complicate version of the previous model so that the random intercept is given by the time variable 'week':
+
+```{r}
+# random intercept model v2
+bprs_lmer2 <- lmer(bprs ~ week + treatment + (week | subject), data = bprs_long, REML = F)
+
+# model summary
+summary(bprs_lmer2)
+```
+
+The situation still looks quite the same. Let us however compare these two models:
+
+```{r}
+anova(bprs_lmer2, bprs_lmer)
+```
+
+The p-value (0.03) is under the significance level 0.05 which means that these two models are statistically different. Because the residual of the second model (9.87) is a bit smaller than in the first case (10.21), we choose to use the second model.
+
+To try something even more extreme, we model the fit one last time by adding 'week' times 'treatment' type interaction:
+
+```{r}
+# random intercept model v3
+bprs_lmer3 <- lmer(bprs ~ week * treatment + (week | subject), data = bprs_long, REML = F)
+
+# model summary
+summary(bprs_lmer3)
+
+# comparison
+anova(bprs_lmer3, bprs_lmer2)
+```
+
+This model is not statistically different from the second model. However because its best estimate for the residual is a bit small (9.82), we decide to use this model to instead of:
+
+```{r}
+# final model
+fitted_model <- fitted(bprs_lmer3)
+
+# adding the model to the data set as a column
+bprs_long <- bprs_long %>% mutate(fitted = fitted_model)
+```
+
+Finally, let us then compare the original BPRS plot and the fitted model:
+
+```{r fig.cap="Original BPRS data."}
+ggplot(bprs_long, aes(x = week, y = bprs, linetype = subject)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(bprs_long$bprs), max(bprs_long$bprs)))
+```
+
+```{r fig.cap="Fitted BPRS data."}
+ggplot(bprs_long, aes(x = week, y = fitted, linetype = subject)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(bprs_long$bprs), max(bprs_long$bprs)))
+```
+
+It seems that overall the model catch the general behavior of the data set. Nonetheless, in some extreme cases the model does not behave well-enough to present the original observation. For instance, the model gives monotonically decreasing lines but some observations obey U-shaped time evolution.

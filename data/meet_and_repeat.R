@@ -80,4 +80,4 @@ glimpse(rats_long)
 
 # Finally, let us save these updated data sets
 write.table(bprs_long, file = "data/bprs_long.txt", sep = "\t")
-write.table(rats_long, file = "data/bprs_long.txt", sep = "\t")
+write.table(rats_long, file = "data/rats_long.txt", sep = "\t")
